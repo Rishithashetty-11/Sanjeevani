@@ -11,11 +11,31 @@ app.get('/', (req, res) => {
 });
 
 app.post('/blood-request', (req, res) => {
-  const { name, bloodGroup, hospital, contact } = req.body;
+  // Updated to match the fields sent from the Flutter app
+  const { name, bloodType, units, contact, purpose } = req.body;
   console.log('Received Blood Request:', req.body);
+
+  // Basic validation to ensure required fields are present
+  if (!name || !bloodType || !units || !contact || !purpose) {
+    return res.status(400).json({ message: 'Missing required fields' });
+  }
 
   res.status(200).json({
     message: 'Blood request received successfully!',
+    data: req.body,
+  });
+});
+
+app.post('/book-appointment', (req, res) => {
+  const { name, phone, date, cartItems } = req.body;
+  console.log('Received Appointment Booking:', req.body);
+
+  if (!name || !phone || !date || !cartItems) {
+    return res.status(400).json({ message: 'Missing required fields' });
+  }
+
+  res.status(200).json({
+    message: 'Appointment booked successfully!',
     data: req.body,
   });
 });

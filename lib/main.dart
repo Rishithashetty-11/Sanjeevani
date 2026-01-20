@@ -179,7 +179,7 @@ class BloodInventorySheet extends StatelessWidget {
     final unitsController = TextEditingController();
     final contactController = TextEditingController();
     final purposeController = TextEditingController();
-  
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -243,15 +243,21 @@ class BloodInventorySheet extends StatelessWidget {
                   name: 'Rishitha', // Replace with dynamic user input later
                   bloodType: selectedBloodType ?? 'O+',
                   units: int.tryParse(unitsController.text) ?? 1,
-                  contact: contactController.text.isEmpty ? '9999999999' : contactController.text,
-                  purpose: purposeController.text.isEmpty ? 'Emergency' : purposeController.text,
+                  contact: contactController.text.isEmpty
+                      ? '9999999999'
+                      : contactController.text,
+                  purpose: purposeController.text.isEmpty
+                      ? 'Emergency'
+                      : purposeController.text,
                 );
-  
+
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(success
-                        ? 'Blood request sent successfully!'
-                        : 'Failed to send request'),
+                    content: Text(
+                      success
+                          ? 'Blood request sent successfully!'
+                          : 'Failed to send request',
+                    ),
                     backgroundColor: success ? Colors.green : Colors.red,
                   ),
                 );
@@ -422,9 +428,9 @@ class DiagnosticCenterListScreen extends StatefulWidget {
       _DiagnosticCenterListScreenState();
 }
 
-class _DiagnosticCenterListScreenState
-    extends State<DiagnosticCenterListScreen> {
+class _DiagnosticCenterListScreenState extends State<DiagnosticCenterListScreen> {
   final List<CartItem> _cart = [];
+  bool _isBooking = false; // Add this line
 
   // Dummy data - Replace with actual API calls
   final List<DiagnosticCenter> centers = [
@@ -472,23 +478,29 @@ class _DiagnosticCenterListScreenState
   void _showTestDetails(DiagnosticCenter center) {
     showModalBottomSheet(
       context: context,
-      builder: (context) => TestListSheet(
-        center: center,
-        onAddToCart: (test) {
-          setState(() {
-            _cart.add(CartItem(test: test, center: center));
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${test.name} added to cart'),
-              action: SnackBarAction(
-                label: 'View Cart',
-                onPressed: () => _showCart(),
-              ),
-            ),
-          );
-        },
-      ),
+      isScrollControlled: true,
+      builder: (context) {
+        return FractionallySizedBox(
+          heightFactor: 0.9,
+          child: TestListSheet(
+            center: center,
+            onAddToCart: (test) {
+              setState(() {
+                _cart.add(CartItem(test: test, center: center));
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('${test.name} added to cart'),
+                  action: SnackBarAction(
+                    label: 'View Cart',
+                    onPressed: () => _showCart(),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 
@@ -506,6 +518,10 @@ class _DiagnosticCenterListScreenState
   }
 
   void _showAppointmentDialog() {
+    final nameController = TextEditingController();
+    final phoneController = TextEditingController();
+    DateTime selectedDate = DateTime.now();
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -515,13 +531,16 @@ class _DiagnosticCenterListScreenState
             mainAxisSize: MainAxisSize.min,
             children: [
               CalendarDatePicker(
-                initialDate: DateTime.now(),
+                initialDate: selectedDate,
                 firstDate: DateTime.now(),
                 lastDate: DateTime.now().add(const Duration(days: 30)),
-                onDateChanged: (date) {},
+                onDateChanged: (date) {
+                  selectedDate = date;
+                },
               ),
               const SizedBox(height: 16),
               TextFormField(
+                controller: nameController,
                 decoration: const InputDecoration(
                   labelText: 'Name',
                   hintText: 'Enter your full name',
@@ -529,6 +548,7 @@ class _DiagnosticCenterListScreenState
               ),
               const SizedBox(height: 16),
               TextFormField(
+                controller: phoneController,
                 decoration: const InputDecoration(
                   labelText: 'Phone Number',
                   hintText: 'Enter your contact number',
@@ -544,17 +564,60 @@ class _DiagnosticCenterListScreenState
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
-              // Here you would implement the actual appointment booking
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Appointment booked successfully!'),
-                  backgroundColor: Colors.green,
-                ),
-              );
-            },
-            child: const Text('Confirm Booking'),
+            onPressed: _isBooking
+                ? null
+                : () async {
+                    print('Confirm Booking button pressed'); // Add this line for debugging
+                    setState(() {
+                      _isBooking = true;
+                    });
+
+                    try {
+                      final success = await ApiService.bookAppointment(
+                        name: nameController.text,
+                        phone: phoneController.text,
+                        date: selectedDate,
+                        cartItems: _cart,
+                      );
+
+                      Navigator.pop(context); // Close the dialog
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(success
+                              ? 'Appointment booked successfully!'
+                              : 'Failed to book appointment.'),
+                          backgroundColor: success ? Colors.green : Colors.red,
+                        ),
+                      );
+                      if (success) {
+                        setState(() {
+                          _cart.clear();
+                        });
+                      }
+                    } catch (e) {
+                      Navigator.pop(context); // Close the dialog on error
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('An error occurred: $e'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    } finally {
+                      setState(() {
+                        _isBooking = false;
+                      });
+                    }
+                  },
+            child: _isBooking
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : const Text('Confirm Booking'),
           ),
         ],
       ),
@@ -597,7 +660,7 @@ class _DiagnosticCenterListScreenState
 class TestListSheet extends StatelessWidget {
   final DiagnosticCenter center;
   final Function(DiagnosticTest) onAddToCart;
-
+  
   const TestListSheet({
     super.key,
     required this.center,
@@ -606,42 +669,51 @@ class TestListSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(center.name, style: Theme.of(context).textTheme.headlineSmall),
-          const SizedBox(height: 16.0),
-          SizedBox(
-            height: MediaQuery.of(context).size.height * 0.5,
-            child: ListView.builder(
-              itemCount: center.tests.length,
-              itemBuilder: (context, index) {
-                final test = center.tests[index];
-                return Card(
-                  child: ListTile(
-                    title: Text(test.name),
-                    subtitle: Text(test.description),
-                    trailing: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          '₹${test.price.toStringAsFixed(2)}',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        ElevatedButton(
-                          onPressed: () => onAddToCart(test),
-                          child: const Text('Add to Cart'),
-                        ),
-                      ],
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Text(center.name, style: Theme.of(context).textTheme.headlineSmall),
+            const SizedBox(height: 16),
+            Expanded(
+              child: ListView.builder(
+                itemCount: center.tests.length,
+                itemBuilder: (context, index) {
+                  final test = center.tests[index];
+                  return Card(
+                    child: ListTile(
+                      title: Text(test.name),
+                      subtitle: Text(test.description),
+                      trailing: Wrap(
+  direction: Axis.vertical,
+  alignment: WrapAlignment.center,
+  spacing: 4,
+  children: [
+    Text(
+      '₹${test.price.toStringAsFixed(2)}',
+      style: const TextStyle(fontWeight: FontWeight.bold),
+    ),
+    SizedBox(
+      height: 28,
+      child: ElevatedButton(
+        onPressed: () => onAddToCart(test),
+        child: const Text(
+          'Add',
+          style: TextStyle(fontSize: 12),
+        ),
+      ),
+    ),
+  ],
+),
+
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -670,8 +742,7 @@ class CartSheet extends StatelessWidget {
         children: [
           Text('Your Cart', style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 16.0),
-          SizedBox(
-            height: MediaQuery.of(context).size.height * 0.4,
+          Expanded(
             child: ListView.builder(
               itemCount: cartItems.length,
               itemBuilder: (context, index) {
