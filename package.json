@@ -22,6 +22,7 @@
   },
   "homepage": "https://github.com/Rishithashetty-11/Sanjeevani#readme",
   "dependencies": {
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "mongoose": "^9.1.5"
   }
 }
