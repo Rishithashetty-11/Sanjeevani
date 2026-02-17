@@ -1,13 +1,11 @@
 const express = require('express');
 const cors = require('cors');
-const bodyParser = require('body-parser');
 const { Kafka } = require('kafkajs');
 const mongoose = require('mongoose');
 
 const app = express();
 app.use(express.json());
 app.use(cors());
-app.use(bodyParser.json());
 
 /* =========================
    MongoDB Connection
@@ -15,35 +13,17 @@ app.use(bodyParser.json());
 mongoose
   .connect('mongodb://127.0.0.1:27017/sanjeevani_db')
   .then(() => console.log('✅ MongoDB Connected'))
-  .catch((err) => console.error('❌ MongoDB Connection Error', err));
+  .catch((err) => console.error('❌ MongoDB Connection Error:', err));
 
 /* =========================
    Kafka Setup
 ========================= */
 const kafka = new Kafka({
   clientId: 'sanjeevani-server',
-  brokers: ['localhost:9092'],
+  brokers: ['localhost:9092'], // use same everywhere
 });
 
 const producer = kafka.producer();
-
-const connectKafka = async () => {
-  try {
-    await producer.connect();
-    console.log('✅ Kafka Producer Connected');
-  } catch (error) {
-    console.error('❌ Kafka Connection Failed', error);
-  }
-};
-
-connectKafka();
-
-/* =========================
-   Routes
-========================= */
-app.get('/', (req, res) => {
-  res.send('Sanjeevani Server is Running');
-});
 
 /* =========================
    MongoDB Schema
@@ -63,6 +43,13 @@ const bloodRequestSchema = new mongoose.Schema({
 });
 
 const BloodRequest = mongoose.model('BloodRequest', bloodRequestSchema);
+
+/* =========================
+   Routes
+========================= */
+app.get('/', (req, res) => {
+  res.send('Sanjeevani Server is Running');
+});
 
 /* =========================
    Blood Request → Kafka + MongoDB
@@ -108,50 +95,49 @@ app.post('/blood-request', async (req, res) => {
     timestamp: new Date().toISOString(),
   };
 
+  /* 🔹 1️⃣ Send to Kafka FIRST */
   try {
-    // 🔹 Save to MongoDB
-    const request = new BloodRequest(payload);
-    await request.save();
-    console.log('✅ Blood request saved to MongoDB');
-
-    // 🔹 Send to Kafka
     await producer.send({
       topic: 'blood-requests',
       messages: [{ value: JSON.stringify(payload) }],
     });
 
     console.log('✅ Blood request sent to Kafka');
-
-    res.status(200).json({
-      message: 'Blood request saved & sent successfully',
-      data: payload,
-    });
   } catch (error) {
-    console.error('❌ Error:', error);
-    res.status(500).json({ message: 'Internal Server Error' });
+    console.error('❌ Kafka Send Error:', error);
   }
-});
 
-/* =========================
-   Appointment Booking
-========================= */
-app.post('/book-appointment', (req, res) => {
-  const { name, phone, date, cartItems } = req.body;
-
-  if (!name || !phone || !date || !cartItems) {
-    return res.status(400).json({ message: 'Missing required fields' });
+  /* 🔹 2️⃣ Save to MongoDB (separate) */
+  try {
+    const request = new BloodRequest(payload);
+    await request.save();
+    console.log('✅ Blood request saved to MongoDB');
+  } catch (error) {
+    console.error('❌ MongoDB Save Error:', error);
   }
 
   res.status(200).json({
-    message: 'Appointment booked successfully!',
-    data: req.body,
+    message: 'Blood request processed',
+    data: payload,
   });
 });
 
 /* =========================
-   Server Start
+   Server Start (Kafka first)
 ========================= */
 const PORT = 3000;
-app.listen(PORT, () =>
-  console.log(`✅ Server running on port ${PORT}`)
-);
+
+const startServer = async () => {
+  try {
+    await producer.connect();
+    console.log('✅ Kafka Producer Connected');
+
+    app.listen(PORT, () =>
+      console.log(`✅ Server running on port ${PORT}`)
+    );
+  } catch (error) {
+    console.error('❌ Kafka Connection Failed:', error);
+  }
+};
+
+startServer();

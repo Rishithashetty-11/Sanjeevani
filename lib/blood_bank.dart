@@ -115,11 +115,9 @@ class BloodInventorySheet extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Request Blood'),
-        // Wrapping the Form in a SingleChildScrollView makes the content scrollable,
-        // preventing a RenderFlex overflow when the keyboard is open.
-        content: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
+        content: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -227,58 +225,53 @@ class BloodInventorySheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // By wrapping the content in a SingleChildScrollView, we ensure that even on smaller
-    // screens or when the keyboard is up, the content remains accessible without overflow.
+    // By placing SingleChildScrollView as the root and Padding inside, we ensure
+    // that the entire content is scrollable, preventing overflow issues.
     return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               bloodBank.name,
               style: Theme.of(context).textTheme.headlineSmall,
             ),
-            const SizedBox(height: 8),
-            Text('Available Blood Units:'),
-            const SizedBox(height: 8),
-            // Using a fixed height for the GridView inside a Column with MainAxisSize.min
-            // prevents unbounded height errors. The content will scroll if it overflows.
-            SizedBox(
-              height: 200, // Adjust height as needed
-              child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 4,
-                  childAspectRatio: 2,
-                ),
-                itemCount: bloodBank.bloodInventory.length,
-                itemBuilder: (context, index) {
-                  final type = bloodBank.bloodInventory.keys.elementAt(index);
-                  final units = bloodBank.bloodInventory[type];
-                  return Card(
-                    color: Colors.red.shade100,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          type,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        Text('$units units'),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
             const SizedBox(height: 16),
+            const Text('Available Blood Units:'),
+            const SizedBox(height: 8),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 4,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+                childAspectRatio: 2,
+              ),
+              itemCount: bloodBank.bloodInventory.length,
+              itemBuilder: (context, index) {
+                String bloodType = bloodBank.bloodInventory.keys.elementAt(index);
+                int units = bloodBank.bloodInventory.values.elementAt(index);
+                return Card(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(bloodType, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Text('$units units'),
+                    ],
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 24),
             Center(
               child: ElevatedButton(
                 onPressed: () => _showRequestDialog(context),
                 child: const Text('Request Blood'),
               ),
-            ),
+            )
           ],
         ),
       ),
