@@ -105,6 +105,7 @@ class BloodInventorySheet extends StatelessWidget {
   void _showRequestDialog(BuildContext context) {
     final _formKey = GlobalKey<FormState>();
     String? selectedBloodType;
+    String? selectedUrgency;
     final nameController = TextEditingController();
     final unitsController = TextEditingController();
     final contactController = TextEditingController();
@@ -126,6 +127,22 @@ class BloodInventorySheet extends StatelessWidget {
                   decoration: const InputDecoration(labelText: 'Your Name'),
                   validator: (value) =>
                       value!.isEmpty ? 'Please enter your name' : null,
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(labelText: 'Urgency'),
+                  value: selectedUrgency,
+                  items: ['Low', 'Medium', 'High'].map((String level) {
+                    return DropdownMenuItem<String>(
+                      value: level,
+                      child: Text(level),
+                    );
+                  }).toList(),
+                  onChanged: (String? value) {
+                    selectedUrgency = value;
+                  },
+                  validator: (value) =>
+                      value == null ? 'Please select urgency' : null,
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
@@ -198,8 +215,7 @@ class BloodInventorySheet extends StatelessWidget {
                     bloodType: selectedBloodType!,
                     units: int.parse(unitsController.text),
                     contact: contactController.text,
-                    hospital: hospitalController.text,
-                    city: cityController.text,
+                    urgency: selectedUrgency!,
                     latitude: position.latitude,
                     longitude: position.longitude,
                   );
@@ -252,13 +268,18 @@ class BloodInventorySheet extends StatelessWidget {
               ),
               itemCount: bloodBank.bloodInventory.length,
               itemBuilder: (context, index) {
-                String bloodType = bloodBank.bloodInventory.keys.elementAt(index);
+                String bloodType = bloodBank.bloodInventory.keys.elementAt(
+                  index,
+                );
                 int units = bloodBank.bloodInventory.values.elementAt(index);
                 return Card(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(bloodType, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Text(
+                        bloodType,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
                       Text('$units units'),
                     ],
                   ),
@@ -271,7 +292,7 @@ class BloodInventorySheet extends StatelessWidget {
                 onPressed: () => _showRequestDialog(context),
                 child: const Text('Request Blood'),
               ),
-            )
+            ),
           ],
         ),
       ),

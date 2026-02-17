@@ -33,8 +33,7 @@ const bloodRequestSchema = new mongoose.Schema({
   bloodType: String,
   units: Number,
   contact: String,
-  hospital: String,
-  city: String,
+  urgency: String,
   location: {
     latitude: Number,
     longitude: Number,
@@ -60,8 +59,7 @@ app.post('/blood-request', async (req, res) => {
     bloodType,
     units,
     contact,
-    hospital,
-    city,
+    urgency,
     latitude,
     longitude,
   } = req.body;
@@ -73,8 +71,7 @@ app.post('/blood-request', async (req, res) => {
     !bloodType ||
     !units ||
     !contact ||
-    !hospital ||
-    !city ||
+    !urgency||
     latitude === undefined ||
     longitude === undefined
   ) {
@@ -86,8 +83,7 @@ app.post('/blood-request', async (req, res) => {
     bloodType,
     units,
     contact,
-    hospital,
-    city,
+    urgency,
     location: {
       latitude,
       longitude,
